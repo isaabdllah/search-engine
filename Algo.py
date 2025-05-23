@@ -1,3 +1,6 @@
+# ie algo awal hungkul teu dipake
+
+
 import requests
 from bs4 import BeautifulSoup
 from collections import deque
