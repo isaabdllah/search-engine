@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Crawler - BFS Algorithm</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            padding-top: 2rem;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        .search-form {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            margin-bottom: 2rem;
+        }
+        .search-results {
+            display: none;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 2rem 0;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        h1 {
+            margin-bottom: 2rem;
+            color: #343a40;
+        }
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+            font-family: monospace;
+            margin-bottom: 1rem;
+        }
+        .url-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .tab-content {
+            padding: 1rem;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Web Crawler - BFS Algorithm</h1>
+        
+        <div class="search-form">
+            <h2>Search Parameters</h2>
+            <form id="searchForm">
+                <div class="mb-3">
+                    <label for="startUrl" class="form-label">Start URL</label>
+                    <input type="url" class="form-control" id="startUrl" name="startUrl" value="https://www.ui.ac.id" required>
+                </div>
+                <div class="mb-3">
+                    <label for="keyword" class="form-label">Keyword to Search</label>
+                    <input type="text" class="form-control" id="keyword" name="keyword" placeholder="Leave empty to crawl without searching for a keyword">
+                </div>
+                <div class="mb-3">
+                    <label for="maxDepth" class="form-label">Max Depth (-1 for unlimited)</label>
+                    <input type="number" class="form-control" id="maxDepth" name="maxDepth" value="2">
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="useEnglish" name="useEnglish">
+                    <label class="form-check-label" for="useEnglish">Use English version of the site</label>
+                </div>
+                <button type="submit" class="btn btn-primary">Start Crawling</button>
+            </form>
+        </div>
+        
+        <div class="loader">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Crawling in progress... This may take a while depending on the depth and website size.</p>
+            <div id="searchStatus" class="mt-3"></div>
+        </div>
+        
+        <div class="search-results">
+            <h2>Search Results</h2>
+            
+            <ul class="nav nav-tabs" id="resultTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="log-tab" data-bs-toggle="tab" data-bs-target="#log" type="button" role="tab">Search Log</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="found-tab" data-bs-toggle="tab" data-bs-target="#found" type="button" role="tab">Found URLs</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab">All Links</button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="resultTabsContent">
+                <div class="tab-pane fade show active" id="log" role="tabpanel" aria-labelledby="log-tab">
+                    <div class="log-container" id="searchLog"></div>
+                </div>
+                <div class="tab-pane fade" id="found" role="tabpanel" aria-labelledby="found-tab">
+                    <div class="url-list" id="keywordFoundUrls"></div>
+                </div>
+                <div class="tab-pane fade" id="all" role="tabpanel" aria-labelledby="all-tab">
+                    <div class="url-list" id="allLinks"></div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <h3>Summary</h3>
+                <p id="summaryCrawled"></p>
+                <p id="summaryFound"></p>
+                <p id="summaryTotal"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchForm = document.getElementById('searchForm');
+            const loader = document.querySelector('.loader');
+            const searchResults = document.querySelector('.search-results');
+            const searchLog = document.getElementById('searchLog');
+            const keywordFoundUrls = document.getElementById('keywordFoundUrls');
+            const allLinks = document.getElementById('allLinks');
+            const searchStatus = document.getElementById('searchStatus');
+            const summaryCrawled = document.getElementById('summaryCrawled');
+            const summaryFound = document.getElementById('summaryFound');
+            const summaryTotal = document.getElementById('summaryTotal');
+            
+            searchForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Show loader, hide results
+                loader.style.display = 'block';
+                searchResults.style.display = 'none';
+                searchStatus.textContent = 'Starting crawl...';
+                
+                // Clear previous results
+                searchLog.innerHTML = '';
+                keywordFoundUrls.innerHTML = '';
+                allLinks.innerHTML = '';
+                
+                // Get form data
+                const startUrl = document.getElementById('startUrl').value;
+                const keyword = document.getElementById('keyword').value;
+                const maxDepth = document.getElementById('maxDepth').value;
+                const useEnglish = document.getElementById('useEnglish').checked;
+                
+                // Send search request
+                fetch('/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        start_url: startUrl,
+                        keyword: keyword,
+                        max_depth: maxDepth,
+                        use_english: useEnglish
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Hide loader, show results
+                    loader.style.display = 'none';
+                    searchResults.style.display = 'block';
+                    
+                    // Display search log
+                    data.search_log.forEach(log => {
+                        const logEntry = document.createElement('div');
+                        logEntry.textContent = log;
+                        searchLog.appendChild(logEntry);
+                    });
+                    
+                    // Display keyword found URLs
+                    if (data.keyword_found_urls.length > 0) {
+                        const list = document.createElement('ul');
+                        list.className = 'list-group';
+                        
+                        data.keyword_found_urls.forEach(url => {
+                            const item = document.createElement('li');
+                            item.className = 'list-group-item';
+                            
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.textContent = url;
+                            link.target = '_blank';
+                            
+                            item.appendChild(link);
+                            list.appendChild(item);
+                        });
+                        
+                        keywordFoundUrls.appendChild(list);
+                    } else {
+                        keywordFoundUrls.textContent = keyword ? 'No URLs containing the keyword were found.' : 'No keyword specified for search.';
+                    }
+                    
+                    // Display all links
+                    if (data.all_links.length > 0) {
+                        const list = document.createElement('ul');
+                        list.className = 'list-group';
+                        
+                        data.all_links.forEach(url => {
+                            const item = document.createElement('li');
+                            item.className = 'list-group-item';
+                            
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.textContent = url;
+                            link.target = '_blank';
+                            
+                            item.appendChild(link);
+                            list.appendChild(item);
+                        });
+                        
+                        allLinks.appendChild(list);
+                    } else {
+                        allLinks.textContent = 'No links were found.';
+                    }
+                    
+                    // Update summary
+                    summaryCrawled.textContent = `URLs Crawled: ${data.search_log.filter(log => log.includes('Visiting')).length}`;
+                    summaryFound.textContent = `URLs with keyword "${keyword}": ${data.keyword_found_urls.length}`;
+                    summaryTotal.textContent = `Total links found: ${data.all_links.length}`;
+                    
+                    // Auto-scroll to results
+                    searchResults.scrollIntoView({ behavior: 'smooth' });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    loader.style.display = 'none';
+                    alert('An error occurred during the search. Please try again.');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

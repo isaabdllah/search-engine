@@ -1,0 +1,86 @@
+/* Additional custom styles */
+
+/* Main container styles */
+.container {
+    padding-bottom: 2rem;
+}
+
+/* Animation for the log entries */
+.log-container div {
+    animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Keyword highlight */
+.keyword-highlight {
+    background-color: #ffc107;
+    padding: 0 2px;
+    border-radius: 3px;
+}
+
+/* Path visualization */
+.path-container {
+    margin-top: 10px;
+}
+
+.path-arrow {
+    margin: 0 5px;
+    color: #6c757d;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .search-form, .search-results {
+        padding: 1rem;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .spinner-border {
+        width: 2rem;
+        height: 2rem;
+    }
+}
+
+/* Status indicators */
+.status-crawling {
+    color: #007bff;
+}
+
+.status-found {
+    color: #28a745;
+}
+
+.status-error {
+    color: #dc3545;
+}
+
+/* Tab styling */
+.nav-tabs .nav-link {
+    color: #495057;
+}
+
+.nav-tabs .nav-link.active {
+    color: #007bff;
+    font-weight: 600;
+}
+
+/* URL list styling */
+.url-list .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.url-list a {
+    text-decoration: none;
+}
+
+.url-list a:hover {
+    text-decoration: underline;
+}
