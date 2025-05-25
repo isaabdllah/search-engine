@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Crawler - BFS Algorithm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>Web Crawler - Search Algorithm</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
         body {
@@ -65,7 +65,7 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="text-center">Web Crawler - BFS Algorithm</h1>
+        <h1 class="text-center">Web Crawler - Search Algorithm</h1>
         
         <div class="search-form">
             <h2>Search Parameters</h2>
@@ -81,6 +81,12 @@
                 <div class="mb-3">
                     <label for="maxDepth" class="form-label">Max Depth (-1 for unlimited)</label>
                     <input type="number" class="form-control" id="maxDepth" name="maxDepth" value="2">
+                </div>                <div class="mb-3">
+                    <label for="algorithm" class="form-label">Search Algorithm</label>
+                    <select class="form-select" id="algorithm" name="algorithm">
+                        <option value="bfs" selected>Breadth-First Search (BFS)</option>
+                        <option value="dfs">Depth-First Search (DFS)</option>
+                    </select>
                 </div>
                 <div class="mb-3 form-check">
                     <input type="checkbox" class="form-check-input" id="useEnglish" name="useEnglish">
@@ -165,9 +171,10 @@
                 const startUrl = document.getElementById('startUrl').value;
                 const keyword = document.getElementById('keyword').value;
                 const maxDepth = document.getElementById('maxDepth').value;
-                const useEnglish = document.getElementById('useEnglish').checked;
-                
-                // Send search request
+                const useEnglish = document.getElementById('useEnglish').checked;                    // Get algorithm
+                    const algorithm = document.getElementById('algorithm').value;
+                    
+                    // Send search request
                 fetch('/search', {
                     method: 'POST',
                     headers: {
@@ -177,7 +184,8 @@
                         start_url: startUrl,
                         keyword: keyword,
                         max_depth: maxDepth,
-                        use_english: useEnglish
+                        use_english: useEnglish,
+                        algorithm: algorithm
                     })
                 })
                 .then(response => response.json())
@@ -192,22 +200,85 @@
                         logEntry.textContent = log;
                         searchLog.appendChild(logEntry);
                     });
-                    
-                    // Display keyword found URLs
+                      // Display keyword found URLs with path visualization buttons
                     if (data.keyword_found_urls.length > 0) {
                         const list = document.createElement('ul');
                         list.className = 'list-group';
                         
                         data.keyword_found_urls.forEach(url => {
                             const item = document.createElement('li');
-                            item.className = 'list-group-item';
+                            item.className = 'list-group-item d-flex justify-content-between align-items-center flex-wrap';
+                            
+                            // URL Link
+                            const linkContainer = document.createElement('div');
+                            linkContainer.className = 'url-container';
                             
                             const link = document.createElement('a');
                             link.href = url;
                             link.textContent = url;
                             link.target = '_blank';
+                            linkContainer.appendChild(link);
                             
-                            item.appendChild(link);
+                            // Path button
+                            const pathButton = document.createElement('button');
+                            pathButton.className = 'btn btn-sm btn-outline-info ms-2';
+                            pathButton.innerHTML = '<i class="fas fa-route"></i> Show Path';
+                            pathButton.dataset.url = url;
+                            
+                            // Path container (initially hidden)
+                            const pathContainer = document.createElement('div');
+                            pathContainer.className = 'path-container mt-2 w-100 d-none';
+                            pathContainer.id = `path-${url.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                            
+                            // Add click event for path button
+                            pathButton.addEventListener('click', function() {
+                                // Toggle path visibility
+                                if (pathContainer.classList.contains('d-none')) {
+                                    const pathInfo = data.path_info[url];
+                                    if (pathInfo && pathInfo.length > 0) {
+                                        pathContainer.innerHTML = '';
+                                        pathContainer.classList.remove('d-none');
+                                        
+                                        const pathTitle = document.createElement('h6');
+                                        pathTitle.className = 'text-muted mb-2';
+                                        pathTitle.textContent = 'Path from Start URL to Keyword:';
+                                        pathContainer.appendChild(pathTitle);
+                                        
+                                        const pathView = document.createElement('div');
+                                        pathView.className = 'path-visualization border rounded p-2';
+                                        
+                                        pathInfo.forEach((pathUrl, index) => {
+                                            // Create link
+                                            const pathLink = document.createElement('a');
+                                            pathLink.href = pathUrl;
+                                            pathLink.textContent = pathUrl;
+                                            pathLink.target = '_blank';
+                                            pathLink.className = index === pathInfo.length - 1 ? 'text-success fw-bold' : '';
+                                            pathView.appendChild(pathLink);
+                                            
+                                            // Add arrow if not the last item
+                                            if (index < pathInfo.length - 1) {
+                                                const arrow = document.createElement('span');
+                                                arrow.className = 'path-arrow';
+                                                arrow.innerHTML = ' <i class="fas fa-arrow-right"></i> ';
+                                                pathView.appendChild(arrow);
+                                            }
+                                        });
+                                        
+                                        pathContainer.appendChild(pathView);
+                                    } else {
+                                        pathContainer.innerHTML = '<p class="text-muted">No path information available</p>';
+                                    }
+                                } else {
+                                    pathContainer.classList.add('d-none');
+                                }
+                            });
+                            
+                            // Add to item
+                            item.appendChild(linkContainer);
+                            item.appendChild(pathButton);
+                            item.appendChild(pathContainer);
+                            
                             list.appendChild(item);
                         });
                         
@@ -243,6 +314,9 @@
                     summaryCrawled.textContent = `URLs Crawled: ${data.search_log.filter(log => log.includes('Visiting')).length}`;
                     summaryFound.textContent = `URLs with keyword "${keyword}": ${data.keyword_found_urls.length}`;
                     summaryTotal.textContent = `Total links found: ${data.all_links.length}`;
+                      // Update title with the algorithm used
+                    document.querySelector('.search-results h2').textContent = 
+                        `Search Results (${data.algorithm.toUpperCase()} Algorithm)`;
                     
                     // Auto-scroll to results
                     searchResults.scrollIntoView({ behavior: 'smooth' });

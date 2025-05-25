@@ -32,6 +32,31 @@
     color: #6c757d;
 }
 
+.path-visualization {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-wrap: break-word;
+    line-height: 1.8;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.url-container {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Make the URL list items more responsive */
+.list-group-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
     .search-form, .search-results {
